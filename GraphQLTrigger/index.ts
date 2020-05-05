@@ -4,27 +4,35 @@ const client = new CosmosClient(process.env.CosmosKey);
 const typeDefs = gql`
     type Record {
         id: ID
-        userId: String
-        base64: String!
+        clientId: String
+        base64: String,
+        geolocation: String,
+        imageUrl: String,
+        recordId: Int,
+        clientSecret: String
     }
 
     type Query {
-        getForUser(userId: String): [Record]!
+        getForClient(clientId: String, clientSecret: String): [Record]!
     }
 `;
 
 const resolvers = {
     Query: {
-        async getForUser(_, { userId }: { userId: string }) {
+        async getForClient(_, { clientId, clientSecret }: { clientId: string, clientSecret: string }) {
             let results = await client
-                .database("linkylinkdb")
-                .container("linkbundles")
+                .database("trackaboutphotos")
+                .container("photo_metadata")
                 .items.query({
-                    query: "SELECT * FROM c WHERE c.userId = @userId",
+                    query: "SELECT * FROM c WHERE c.clientId = @clientId AND c.clientSecret = @clientSecret",
                     parameters: [
                         {
-                            name: "@userId",
-                            value: userId
+                            name: "@clientId",
+                            value: clientId
+                        },
+                        {
+                            name: "@clientSecret",
+                            value: clientSecret
                         }
                     ]
                 })
