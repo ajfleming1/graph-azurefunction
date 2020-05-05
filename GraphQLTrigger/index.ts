@@ -5,15 +5,21 @@ const typeDefs = gql`
     type Record {
         id: ID
         clientId: String
-        base64: String,
-        geolocation: String,
-        imageUrl: String,
-        recordId: Int,
-        clientSecret: String
+        base64: String
+        imageUrl: String
+        recordId: Int
+        metadata: Metadata
+    }
+
+    type Metadata {
+        lat: Float
+        lng: Float
+        description: String
     }
 
     type Query {
         getForClient(clientId: String, clientSecret: String): [Record]!
+        getForUserGeoBounded(clientId: String, clientSecret: String, bounds: Float, lat: Float, lng: Float): [Record]!
     }
 `;
 
@@ -33,6 +39,42 @@ const resolvers = {
                         {
                             name: "@clientSecret",
                             value: clientSecret
+                        }
+                    ]
+                })
+                .fetchAll();
+
+            return results.resources;
+        },
+        async getForUserGeoBounded(_, { clientId, clientSecret, bounds, lat, lng }: 
+            { clientId: string, clientSecret: string, bounds: number, lat: number, lng: number }) {
+            let results = await client
+                .database("trackaboutphotos")
+                .container("photo_metadata")
+                .items.query({
+                    query: "SELECT * FROM c WHERE c.clientId = @clientId AND c.clientSecret = @clientSecret " +
+                           "AND c.metadata.lat < @lat + @bounds AND c.metadata.lat > @lat - @bounds " +
+                           "AND c.metadata.lng < @lng + @bounds AND c.metadata.lng > @lng - @bounds ",
+                    parameters: [
+                        {
+                            name: "@clientId",
+                            value: clientId
+                        },
+                        {
+                            name: "@clientSecret",
+                            value: clientSecret
+                        },
+                        {
+                            name: "@bounds",
+                            value: bounds
+                        },
+                        {
+                            name: "@lat",
+                            value: lat
+                        },
+                        {
+                            name: "@lng",
+                            value: lng
                         }
                     ]
                 })
